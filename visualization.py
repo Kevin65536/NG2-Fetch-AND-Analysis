@@ -362,8 +362,17 @@ def generate_summary_report(categories, keywords, authors, confidences, output_d
 def main():
     """主函数"""
     # 查找最新的分类结果文件
-    output_dir = './100page_output'
-    json_files = [f for f in os.listdir(output_dir) if f.startswith('nga_classification_') and f.endswith('.json')]
+    search_dirs = ['./100page_output', './production_output', './test_output', './output']
+    json_files = []
+    used_dir = None
+    
+    for output_dir in search_dirs:
+        if os.path.exists(output_dir):
+            files = [f for f in os.listdir(output_dir) if f.startswith('nga_classification_') and f.endswith('.json')]
+            if files:
+                json_files = files
+                used_dir = output_dir
+                break
     
     if not json_files:
         print("未找到分类结果文件")
@@ -371,7 +380,7 @@ def main():
     
     # 使用最新的文件
     latest_file = sorted(json_files)[-1]
-    json_path = os.path.join(output_dir, latest_file)
+    json_path = os.path.join(used_dir, latest_file)
     
     print(f"正在分析文件: {json_path}")
     
@@ -403,6 +412,38 @@ def main():
     print("- confidence_distribution.png (置信度分布)")
     print("- category_keyword_heatmap.png (分类-关键词热力图)")
     print("- visualization_report.md (可视化分析报告)")
+    
+    # 同时生成详细统计表格
+    print("\n正在生成详细统计表格...")
+    try:
+        from statistics_export import (export_category_statistics, export_keyword_statistics, 
+                                     export_author_statistics, export_confidence_statistics,
+                                     export_category_keyword_matrix, create_summary_report as create_stats_report)
+        
+        stats_dir = "./statistics"
+        os.makedirs(stats_dir, exist_ok=True)
+        
+        export_category_statistics(data, stats_dir)
+        export_keyword_statistics(data, stats_dir)
+        export_author_statistics(data, stats_dir)
+        export_confidence_statistics(data, stats_dir)
+        export_category_keyword_matrix(data, stats_dir)
+        create_stats_report(stats_dir)
+        
+        print(f"\n✅ 详细统计表格已生成完毕，保存在: {stats_dir}/")
+        print("生成的统计表格包括:")
+        print("- category_statistics.csv/.xlsx (分类统计)")
+        print("- keyword_statistics_*.csv/.xlsx (关键词统计)")
+        print("- author_statistics.csv/.xlsx (作者统计)")
+        print("- confidence_statistics.csv/.xlsx (置信度统计)")
+        print("- category_keyword_matrix.csv/.xlsx (关联矩阵)")
+        print("- 统计报告说明.md (详细说明)")
+        
+    except ImportError as e:
+        print(f"统计表格生成模块导入失败: {e}")
+        print("请确保 statistics_export.py 文件存在")
+    except Exception as e:
+        print(f"统计表格生成失败: {e}")
 
 if __name__ == "__main__":
     main()
