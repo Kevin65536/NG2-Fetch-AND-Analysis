@@ -10,10 +10,52 @@ import os
 from datetime import datetime
 import seaborn as sns
 import pandas as pd
+import platform
+import warnings
+
+# 中文字体设置函数
+def setup_chinese_fonts():
+    """设置中文字体支持"""
+    system = platform.system()
+    font_path = None
+    
+    if system == "Windows":
+        # Windows系统字体路径
+        font_paths = [
+            'C:\\Windows\\Fonts\\msyh.ttc',     # 微软雅黑
+            'C:\\Windows\\Fonts\\msyhbd.ttc',   # 微软雅黑粗体
+            'C:\\Windows\\Fonts\\simhei.ttf',   # 黑体
+            'C:\\Windows\\Fonts\\simsun.ttc',   # 宋体
+        ]
+        
+        for path in font_paths:
+            if os.path.exists(path):
+                font_path = path
+                print(f"使用字体文件: {path}")
+                break
+    
+    if font_path:
+        # 创建字体属性对象
+        chinese_font = fm.FontProperties(fname=font_path)
+        
+        # 设置全局字体
+        plt.rcParams['font.family'] = ['sans-serif']
+        plt.rcParams['axes.unicode_minus'] = False
+        
+        return chinese_font
+    else:
+        print("未找到中文字体文件，使用系统默认字体")
+        # 尝试系统字体名称
+        plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'SimSun', 'DejaVu Sans']
+        plt.rcParams['axes.unicode_minus'] = False
+        return None
 
 # 设置中文字体
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
-plt.rcParams['axes.unicode_minus'] = False
+chinese_font = setup_chinese_fonts()
+
+# 忽略字体警告
+warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
+warnings.filterwarnings('ignore', category=UserWarning, module='seaborn')
 
 # 设置图表样式
 sns.set_style("whitegrid")
@@ -44,20 +86,36 @@ def create_category_pie_chart(data, output_dir="./charts"):
     labels = list(categories.keys())
     sizes = list(categories.values())
     
+    # 使用中文字体
+    font_prop = chinese_font if chinese_font else None
+    
     wedges, texts, autotexts = plt.pie(sizes, labels=labels, autopct='%1.1f%%', 
                                        colors=colors[:len(labels)], startangle=90,
                                        textprops={'fontsize': 12})
     
-    # 美化文字
-    for autotext in autotexts:
-        autotext.set_color('white')
-        autotext.set_fontweight('bold')
+    # 设置中文字体
+    if chinese_font:
+        for text in texts:
+            text.set_fontproperties(chinese_font)
+        for autotext in autotexts:
+            autotext.set_color('white')
+            autotext.set_fontweight('bold')
+    else:
+        for autotext in autotexts:
+            autotext.set_color('white')
+            autotext.set_fontweight('bold')
     
-    plt.title('NGA二次元国家地理版块内容分类分布', fontsize=16, fontweight='bold', pad=20)
+    plt.title('NGA二次元国家地理版块内容分类分布', fontsize=16, fontweight='bold', pad=20,
+              fontproperties=chinese_font)
     
     # 添加图例
-    plt.legend(wedges, [f'{label}: {size}个' for label, size in zip(labels, sizes)],
-              title="分类详情", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
+    legend_labels = [f'{label}: {size}个' for label, size in zip(labels, sizes)]
+    legend = plt.legend(wedges, legend_labels, title="分类详情", loc="center left", 
+                       bbox_to_anchor=(1, 0, 0.5, 1), prop=chinese_font)
+    
+    # 设置图例标题字体
+    if chinese_font:
+        legend.get_title().set_fontproperties(chinese_font)
     
     plt.tight_layout()
     plt.savefig(f'{output_dir}/category_distribution.png', dpi=300, bbox_inches='tight')
@@ -94,9 +152,14 @@ def create_keyword_bar_chart(data, output_dir="./charts", top_n=15):
     
     # 设置标签
     plt.yticks(range(len(keywords)), keywords)
-    plt.xlabel('出现次数', fontsize=12, fontweight='bold')
-    plt.title(f'热门关键词TOP{top_n}', fontsize=16, fontweight='bold', pad=20)
-    
+    if chinese_font:
+        # 设置y轴标签字体
+        ax = plt.gca()
+        for label in ax.get_yticklabels():
+            label.set_fontproperties(chinese_font)
+    plt.xlabel('出现次数', fontsize=12, fontweight='bold', fontproperties=chinese_font)
+    plt.title(f'热门关键词TOP{top_n}', fontsize=16, fontweight='bold', pad=20, fontproperties=chinese_font)
+
     # 在条形图上显示数值
     for i, bar in enumerate(bars):
         width = bar.get_width()
@@ -132,17 +195,22 @@ def create_author_activity_chart(data, output_dir="./charts", top_n=10):
     
     bars = plt.bar(range(len(authors)), counts, 
                    color=plt.cm.Set3(range(len(authors))))
-    
+
     plt.xticks(range(len(authors)), authors, rotation=45, ha='right')
-    plt.ylabel('发帖数量', fontsize=12, fontweight='bold')
-    plt.title(f'最活跃作者TOP{top_n}', fontsize=16, fontweight='bold', pad=20)
-    
+    if chinese_font:
+        # 设置x轴标签字体
+        ax = plt.gca()
+        for label in ax.get_xticklabels():
+            label.set_fontproperties(chinese_font)
+    plt.ylabel('发帖数量', fontsize=12, fontweight='bold', fontproperties=chinese_font)
+    plt.title(f'最活跃作者TOP{top_n}', fontsize=16, fontweight='bold', pad=20, fontproperties=chinese_font)
+
     # 在条形图上显示数值
     for bar in bars:
         height = bar.get_height()
         plt.text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                f'{int(height)}', ha='center', va='bottom', fontweight='bold')
-    
+                f'{int(height)}', ha='center', va='bottom', fontweight='bold', fontproperties=chinese_font)
+
     plt.tight_layout()
     plt.savefig(f'{output_dir}/author_activity.png', dpi=300, bbox_inches='tight')
     plt.show()
@@ -167,15 +235,15 @@ def create_confidence_distribution(data, output_dir="./charts"):
     plt.figure(figsize=(10, 6))
     
     plt.hist(confidences, bins=20, alpha=0.7, color='skyblue', edgecolor='black')
-    plt.xlabel('分类置信度', fontsize=12, fontweight='bold')
-    plt.ylabel('帖子数量', fontsize=12, fontweight='bold')
-    plt.title('AI分类置信度分布', fontsize=16, fontweight='bold', pad=20)
-    
+    plt.xlabel('分类置信度', fontsize=12, fontweight='bold', fontproperties=chinese_font)
+    plt.ylabel('帖子数量', fontsize=12, fontweight='bold', fontproperties=chinese_font)
+    plt.title('AI分类置信度分布', fontsize=16, fontweight='bold', pad=20, fontproperties=chinese_font)
+
     # 添加统计信息
     avg_confidence = sum(confidences) / len(confidences)
     plt.axvline(avg_confidence, color='red', linestyle='--', 
                 label=f'平均置信度: {avg_confidence:.3f}')
-    plt.legend()
+    plt.legend(prop=chinese_font)
     
     plt.tight_layout()
     plt.savefig(f'{output_dir}/confidence_distribution.png', dpi=300, bbox_inches='tight')
@@ -220,13 +288,28 @@ def create_category_keyword_heatmap(data, output_dir="./charts"):
     plt.figure(figsize=(16, 8))
     
     df = pd.DataFrame(matrix, index=categories, columns=top_keywords)
-    sns.heatmap(df, annot=True, cmap='YlOrRd', fmt='d', cbar_kws={'label': '出现次数'})
     
-    plt.title('分类-关键词关联热力图', fontsize=16, fontweight='bold', pad=20)
-    plt.xlabel('关键词', fontsize=12, fontweight='bold')
-    plt.ylabel('分类', fontsize=12, fontweight='bold')
+    # 创建热力图
+    ax = sns.heatmap(df, annot=True, cmap='YlOrRd', fmt='d', 
+                     cbar_kws={'label': '出现次数'})
+    
+    # 设置colorbar字体
+    cbar = ax.collections[0].colorbar
+    cbar.set_label('出现次数', fontproperties=chinese_font)
+
+    plt.title('分类-关键词关联热力图', fontsize=16, fontweight='bold', pad=20, fontproperties=chinese_font)
+    plt.xlabel('关键词', fontsize=12, fontweight='bold', fontproperties=chinese_font)
+    plt.ylabel('分类', fontsize=12, fontweight='bold', fontproperties=chinese_font)
     plt.xticks(rotation=45, ha='right')
     plt.yticks(rotation=0)
+    
+    # 设置刻度标签字体
+    if chinese_font:
+        ax = plt.gca()
+        for label in ax.get_xticklabels():
+            label.set_fontproperties(chinese_font)
+        for label in ax.get_yticklabels():
+            label.set_fontproperties(chinese_font)
     
     plt.tight_layout()
     plt.savefig(f'{output_dir}/category_keyword_heatmap.png', dpi=300, bbox_inches='tight')
@@ -279,7 +362,7 @@ def generate_summary_report(categories, keywords, authors, confidences, output_d
 def main():
     """主函数"""
     # 查找最新的分类结果文件
-    output_dir = './test_output'
+    output_dir = './100page_output'
     json_files = [f for f in os.listdir(output_dir) if f.startswith('nga_classification_') and f.endswith('.json')]
     
     if not json_files:
